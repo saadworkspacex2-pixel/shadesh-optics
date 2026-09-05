@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus, Search, Pencil, Trash2, X, Download, Upload, ChevronUp, ChevronDown,
-  ImagePlus, Package, Check,
+  ImagePlus, Package, Check, ImageUp,
 } from "lucide-react";
 import type { Product } from "@/db/schema";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -77,7 +77,9 @@ export default function AdminProductsPage() {
   const [toast, setToast] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageFileRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const [imgUploading, setImgUploading] = useState(false);
 
   const load = useCallback(async (q = search, cat = catFilter) => {
     setLoading(true);
@@ -198,6 +200,30 @@ export default function AdminProductsPage() {
 
   const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => setEditing((e) => (e ? { ...e, [k]: v } : e));
 
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageFiles = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    setImgUploading(true);
+    try {
+      const dataUrls = await Promise.all(
+        Array.from(files)
+          .filter((f) => f.type.startsWith("image/"))
+          .map(fileToDataUrl)
+      );
+      setEditing((e) => (e ? { ...e, images: [...e.images, ...dataUrls] } : e));
+    } finally {
+      setImgUploading(false);
+      if (imageFileRef.current) imageFileRef.current.value = "";
+    }
+  };
+
   return (
     <AdminShell title="Products" subtitle="Catalogue, pricing, imagery and SEO">
       {/* Toolbar */}
@@ -293,7 +319,7 @@ export default function AdminProductsPage() {
                   <td className="p-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="relative w-11 h-11 rounded-xl overflow-hidden bg-white/8 shrink-0">
-                        {p.images?.[0] && <Image src={p.images[0]} alt="" fill sizes="44px" className="object-cover" unoptimized={p.images[0].startsWith("http")} />}
+                        {p.images?.[0] && <Image src={p.images[0]} alt="" fill sizes="44px" className="object-cover" unoptimized={p.images[0].startsWith("http") || p.images[0].startsWith("data:")} />}
                       </span>
                       <div className="min-w-0">
                         <p className="font-semibold truncate max-w-48">{p.name}</p>
@@ -428,7 +454,7 @@ export default function AdminProductsPage() {
                     {editing.images.map((img, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="relative w-10 h-10 rounded-lg overflow-hidden bg-white/8 shrink-0">
-                          <Image src={img} alt="" fill sizes="40px" className="object-cover" unoptimized={img.startsWith("http")} />
+                          <Image src={img} alt="" fill sizes="40px" className="object-cover" unoptimized={img.startsWith("http") || img.startsWith("data:")} />
                         </span>
                         <input className={inputCls + " !py-2.5"} value={img}
                           onChange={(e) => { const next = [...editing.images]; next[i] = e.target.value; setF("images", next); }} />
@@ -443,10 +469,18 @@ export default function AdminProductsPage() {
                           className="p-2 rounded-lg hover:bg-rose-500/20 text-rose-300"><Trash2 size={14} /></button>
                       </div>
                     ))}
-                    <button type="button" onClick={() => setF("images", [...editing.images, ""])}
-                      className="flex items-center justify-center gap-2 border border-dashed border-white/20 rounded-2xl py-3 text-xs font-semibold text-white/50 hover:text-white hover:border-white/40 transition-colors">
-                      <ImagePlus size={14} /> Add image URL
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input ref={imageFileRef} type="file" accept="image/*" multiple className="hidden"
+                        onChange={(e) => handleImageFiles(e.target.files)} />
+                      <button type="button" disabled={imgUploading} onClick={() => imageFileRef.current?.click()}
+                        className="flex items-center justify-center gap-2 border border-dashed border-white/20 rounded-2xl py-3 text-xs font-semibold text-white/50 hover:text-white hover:border-white/40 transition-colors disabled:opacity-50">
+                        <ImageUp size={14} /> {imgUploading ? "Uploading…" : "Upload from PC"}
+                      </button>
+                      <button type="button" onClick={() => setF("images", [...editing.images, ""])}
+                        className="flex items-center justify-center gap-2 border border-dashed border-white/20 rounded-2xl py-3 text-xs font-semibold text-white/50 hover:text-white hover:border-white/40 transition-colors">
+                        <ImagePlus size={14} /> Add image URL
+                      </button>
+                    </div>
                   </div>
                 </div>
 

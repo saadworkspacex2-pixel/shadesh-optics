@@ -5,6 +5,8 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { ZoomIn } from "lucide-react";
 
+const isRaw = (src: string) => src.startsWith("http") || src.startsWith("data:");
+
 export function Gallery({ images, name, badge }: { images: string[]; name: string; badge?: string }) {
   const imgs = images.length ? images : ["/images/products/vertex.jpg"];
   const [active, setActive] = useState(0);
@@ -23,7 +25,7 @@ export function Gallery({ images, name, badge }: { images: string[]; name: strin
               active === i ? "ring-2 ring-[#0071e3] ring-offset-2 ring-offset-[#f5f5f7]" : "opacity-60 hover:opacity-100"
             }`}
           >
-            <Image src={src} alt={`${name} view ${i + 1}`} fill sizes="72px" className="object-cover" />
+            <Image src={src} alt={`${name} view ${i + 1}`} fill sizes="72px" className="object-cover" unoptimized={isRaw(src)} />
           </button>
         ))}
       </div>
@@ -58,6 +60,7 @@ export function Gallery({ images, name, badge }: { images: string[]; name: strin
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className={`object-cover transition-transform duration-200 ${zoom ? "scale-[1.9]" : ""}`}
                 style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
+                unoptimized={isRaw(imgs[active])}
               />
             </motion.div>
           </AnimatePresence>

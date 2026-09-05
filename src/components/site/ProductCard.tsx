@@ -11,6 +11,7 @@ import { Stars } from "./Reveal";
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const pct = discountPercent(product.price, product.discountPrice);
   const img = product.images?.[0] || "/images/products/vertex.jpg";
+  const imgIsRaw = img.startsWith("http") || img.startsWith("data:");
 
   return (
     <motion.div
@@ -33,6 +34,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06]"
+            unoptimized={imgIsRaw}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           {/* Badges */}
