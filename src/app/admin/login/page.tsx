@@ -88,8 +88,20 @@ export default function AdminLoginPage() {
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("admin@shadesh-optics.com");
+              setPassword("shadesh123");
+              setError("");
+            }}
+            className="mt-3 w-full text-center text-xs text-white/40 hover:text-white/80 py-1 transition-colors"
+          >
+            Click here to fill default login
+          </button>
         </form>
-        <p className="text-center text-white/25 text-xs mt-5">Protected area · Authorised staff only</p>
+        <p className="text-center text-white/25 text-xs mt-4">Protected area · Authorised staff only</p>
       </motion.div>
     </div>
   );

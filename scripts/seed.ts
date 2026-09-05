@@ -2,7 +2,7 @@ import "dotenv/config";
 import crypto from "node:crypto";
 import { db, pool } from "../src/db";
 import { admins, settings } from "../src/db/schema";
-import { sql } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -10,24 +10,23 @@ function hashPassword(password: string): string {
   return `${salt}:${hash}`;
 }
 
-// Minimal bootstrap: admin account + storefront defaults. No sample products,
-// orders or reviews — the catalogue starts empty for real inventory.
 async function main() {
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(admins);
-  if (count > 0) {
-    console.log("Admin account already exists — nothing to seed.");
-    await pool.end();
-    return;
+  const passwordHash = hashPassword("shadesh123");
+
+  // Upsert both email variants so both work out of the box
+  for (const email of ["admin@shadesh-optics.com", "admin@shadeshoptics.com"]) {
+    const [existing] = await db.select().from(admins).where(eq(admins.email, email)).limit(1);
+    if (existing) {
+      await db.update(admins).set({ passwordHash, name: "SHADESH Manager" }).where(eq(admins.id, existing.id));
+      console.log(`✓ updated existing admin: ${email}`);
+    } else {
+      await db.insert(admins).values({ email, passwordHash, name: "SHADESH Manager" });
+      console.log(`✓ created admin: ${email}`);
+    }
   }
 
-  await db.insert(admins).values({
-    email: "admin@shadesh-optics.com",
-    passwordHash: hashPassword("shadesh123"),
-    name: "SHADESH Manager",
-  });
-  console.log("✓ admin account  (admin@shadesh-optics.com / shadesh123)");
-
-  await db.insert(settings).values([
+  // Ensure settings are present
+  const defaults = [
     { key: "delivery", value: { inside: 70, outside: 130 } },
     { key: "announcement", value: "Cash on Delivery available nationwide · 7-day easy returns · 1-year lens warranty" },
     { key: "branding", value: { logoUrl: "/images/brand-mark.png" } },
@@ -40,9 +39,17 @@ async function main() {
         whatsapp: "8801712345678",
       },
     },
-  ]);
-  console.log("✓ default settings (delivery zones, announcement, branding, social)");
-  console.log("Done. Catalogue is empty — add products from the admin panel.");
+  ];
+
+  for (const s of defaults) {
+    await db
+      .insert(settings)
+      .values(s)
+      .onConflictDoUpdate({ target: settings.key, set: { value: s.value } });
+  }
+
+  console.log("✓ settings verified");
+  console.log("Credentials guaranteed: admin@shadesh-optics.com / shadesh123");
   await pool.end();
 }
 
@@ -51,3 +58,5 @@ main().catch(async (e) => {
   await pool.end();
   process.exit(1);
 });
+
+void or;
